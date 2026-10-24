@@ -31,8 +31,52 @@ function beginCook(){seconds=get(current).timers[step]||0;go('cook');if('wakeLoc
 function cook(){let r=get(current);$('#app').innerHTML=`<div class="cook"><div class="row"><button class="back" onclick="window.wl?.release();go('detail')">× 조리 종료</button><span class="tag" id="wake">집중 조리 모드</span></div><h2>${esc(r.title)}</h2><div class="row" style="margin-top:20px"><b>Step ${step+1} of ${r.steps.length}</b><b>${Math.round((step+1)/r.steps.length*100)}%</b></div><div class="progress"><div style="width:${(step+1)/r.steps.length*100}%"></div></div><div class="panel"><span class="tag">진행 중인 단계</span><h1 style="font-size:30px">Step ${step+1}.</h1><p style="font-size:22px;line-height:1.9;color:var(--ink)">${esc(r.steps[step])}</p></div><div class="panel"><div class="row"><h3>조리 타이머</h3><span class="tag">단계별 시간</span></div><div class="timer"><small>남은 시간</small><span id="time">${fmt(seconds)}</span></div><div class="row" style="justify-content:center"><button class="outline" onclick="clearInterval(clock);ticking=false;seconds=get(current).timers[step]||0;$('#time').textContent=fmt(seconds);$('#play').textContent='▶ 시작'">↺ 초기화</button><button class="primary" id="play" onclick="toggleTimer()">▶ 시작</button><button class="outline" onclick="seconds+=60;if(ticking)deadline+=60000;$('#time').textContent=fmt(seconds)">＋ 1분</button></div></div><div class="row"><button class="outline" ${step===0?'disabled':''} onclick="step--;beginCook()">← 이전 단계</button><button class="primary" onclick="${step===r.steps.length-1?"window.wl?.release();go('detail');reviewForm()":"step++;beginCook()"}">${step===r.steps.length-1?'요리 완료 ✓':'다음 단계 →'}</button></div></div>`}
 function fmt(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}function toggleTimer(){if(ticking){clearInterval(clock);ticking=false;$('#play').textContent='▶ 계속';return}if(seconds<=0)return toast('타이머 시간을 추가해 주세요.');ticking=true;$('#play').textContent='Ⅱ 일시 정지';deadline=Date.now()+seconds*1000;clock=setInterval(()=>{seconds=Math.max(0,Math.ceil((deadline-Date.now())/1000));$('#time').textContent=fmt(seconds);if(seconds===0){clearInterval(clock);ticking=false;$('#play').textContent='▶ 시작';toast('설정한 조리 시간이 끝났어요.');navigator.vibrate?.(500)}},250)}
 let reviewPhoto='';function reviewForm(){reviewPhoto='';modal(`<h2>만들어봤어요</h2><p>나의 식탁에서 완성된 이야기를 남겨주세요.</p><form onsubmit="addReview(event)"><label>별점<select name="rating"><option value="5">★★★★★</option><option value="4">★★★★</option><option value="3">★★★</option><option value="2">★★</option><option value="1">★</option></select></label><br><label>후기<textarea name="text" required></textarea></label><br><label>직접 만든 사진<input type="file" accept="image/*" onchange="let f=this.files[0];if(f&&f.size<2000000){let r=new FileReader();r.onload=()=>reviewPhoto=r.result;r.readAsDataURL(f)}else toast('2MB 이하 사진을 선택해 주세요.')"></label><br><button class="primary">후기 저장</button></form>`)}function addReview(e){e.preventDefault();let f=new FormData(e.target);state.reviews[current]??=[];state.reviews[current].push({text:f.get('text'),rating:+f.get('rating'),photo:reviewPhoto});try{persist()}catch{state.reviews[current].pop();return toast('저장 공간이 부족합니다.')}closeModal();page='detail';detail()}
-function profile(){$('#app').innerHTML=`<div class="eyebrow">MY LITTLE KITCHEN</div><h1>${esc(state.profile)}</h1><p>나만의 맛을 기록하고, 다음 요리에 영감을 더해보세요.</p><div class="panel row"><div><span class="tag">이 브라우저의 프로필</span><h2 style="margin:12px 0">${esc(state.profile)}</h2><span class="subtle">내 레시피 ${state.recipes.length}개 · 저장 ${state.saved.length}개</span></div><button class="outline" onclick="editProfile()">프로필 수정</button></div><div class="panel"><h3>체험 버전 안내</h3><p>작성 레시피, 사진, 저장, 좋아요, 후기는 현재 기기에만 저장됩니다. 계정 가입, 기기 간 동기화, 전체·팔로워 공개, 댓글과 신고 처리는 아직 연결되지 않았습니다.</p><button class="outline" onclick="exportData()">내 데이터 내보내기 ↓</button></div><div class="section-head"><h2>내가 만든 레시피</h2><button class="primary" onclick="editor()">＋ 새 레시피</button></div><div class="grid">${cards(state.recipes)}</div>`}
+function profile(){$('#app').innerHTML=`<div class="eyebrow">MY LITTLE KITCHEN</div><h1>${esc(state.profile)}</h1><p>나만의 맛을 기록하고, 다음 요리에 영감을 더해보세요.</p><div class="panel row"><div><span class="tag">이 브라우저의 프로필</span><h2 style="margin:12px 0">${esc(state.profile)}</h2><span class="subtle">내 레시피 ${state.recipes.length}개 · 저장 ${state.saved.length}개</span></div><button class="outline" onclick="editProfile()">프로필 수정</button></div><div class="panel"><div class="row"><div><h3>대표 이미지</h3><p class="subtle">사이드바와 상단 로고 이미지를 변경합니다.</p></div><button class="outline" onclick="brandImageSettings()">이미지 변경</button></div><img src="${esc(brandImageSource())}" alt="현재 대표 이미지" style="width:100px;height:100px;object-fit:contain;border-radius:14px"><p class="subtle">이 브라우저에 저장됩니다. 설치된 앱 아이콘에는 반영되지 않습니다.</p></div><div class="panel"><h3>체험 버전 안내</h3><p>작성 레시피, 사진, 저장, 좋아요, 후기는 현재 기기에만 저장됩니다. 계정 가입, 기기 간 동기화, 전체·팔로워 공개, 댓글과 신고 처리는 아직 연결되지 않았습니다.</p><button class="outline" onclick="exportData()">내 데이터 내보내기 ↓</button></div><div class="section-head"><h2>내가 만든 레시피</h2><button class="primary" onclick="editor()">＋ 새 레시피</button></div><div class="grid">${cards(state.recipes)}</div>`}
 function editProfile(){modal(`<h2>키친 이름 바꾸기</h2><label>이름<input id="pn" maxlength="30" value="${esc(state.profile)}"></label><br><button class="primary" onclick="state.profile=$('#pn').value.trim()||'나의 키친';persist();closeModal();profile()">저장</button>`)}function exportData(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));a.download='yumstep-recipes.json';a.click();URL.revokeObjectURL(a.href)}
 function policy(){modal(`<h2>함께 만드는 신뢰할 수 있는 식탁</h2><h3>콘텐츠와 크레딧</h3><p>직접 작성하거나 사용 권한을 가진 사진과 글을 등록해 주세요. 리믹스는 원본과 원작자 크레딧을 자동으로 연결합니다.</p><h3>알레르기 · 영양 정보</h3><p>사용자 입력 정보는 정확성을 보장하지 않습니다. 제품 표시와 개별 재료를 확인해 주세요. 영양 수치는 검증되지 않아 제공하지 않습니다.</p><h3>현재 서비스 범위</h3><p>개인 체험 버전으로, 공개 게시나 다른 이용자와의 교류는 제공하지 않습니다. 공개 서비스 전 신고·관리 절차, 원본 삭제 시 파생 레시피 유지 정책, 이용약관과 개인정보 처리를 준비해야 합니다.</p><p class="subtle">첨부해 주신 화면을 디자인과 예시 이미지의 참고 자료로 사용했습니다.</p>`)}
+
+const defaultBrandImage='yumstep-recipe-notebook.webp';
+function brandImageSource(){return /^data:image\/(png|jpeg|webp);base64,/.test(state.brandImage||'')?state.brandImage:defaultBrandImage}
+function applyBrandImage(){document.querySelectorAll('.brand-image').forEach(img=>img.src=brandImageSource())}
+let brandImageDraft='',brandImageBusy=false,brandImageSession=0;
+function brandImageSettings(){
+ const session=++brandImageSession;
+ brandImageDraft=state.brandImage||'';brandImageBusy=false;
+ modal(`<h2>대표 이미지 변경</h2><p>사이드바와 상단 로고에 사용할 이미지를 선택하세요.</p><img id="brand-preview" src="${esc(brandImageSource())}" alt="선택한 대표 이미지 미리보기" style="display:block;width:190px;height:190px;max-width:100%;object-fit:contain;background:#f5f6f2;border-radius:18px;margin:20px auto"><label>이미지 파일<input type="file" accept="image/png,image/jpeg,image/webp" onchange="selectBrandImage(this,${session})"></label><p id="brand-image-status" role="status" class="subtle">PNG · JPG · WebP / 최대 10MB. 이미지는 비율을 유지해 저장합니다.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="primary" id="brand-image-save" onclick="saveBrandImage()">저장</button><button class="outline" id="brand-image-reset" onclick="resetBrandImageDraft()">기본 이미지로 복원</button></div><p class="subtle">저장하면 현재 브라우저에만 적용됩니다. 다른 기기와 설치된 앱 아이콘은 별도로 변경해야 합니다.</p>`);
+}
+function resetBrandImageDraft(){brandImageDraft='';$('#brand-preview').src=defaultBrandImage;$('#brand-image-status').textContent='저장을 누르면 기본 이미지로 복원됩니다.'}
+async function selectBrandImage(input,session){
+ const file=input.files?.[0];if(!file)return;
+ const status=$('#brand-image-status');
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type)){input.value='';status.textContent='PNG, JPG 또는 WebP 이미지를 선택해 주세요.';return}
+ if(file.size>10*1024*1024){input.value='';status.textContent='10MB 이하의 이미지를 선택해 주세요.';return}
+ brandImageBusy=true;input.disabled=true;$('#brand-image-save').disabled=true;$('#brand-image-reset').disabled=true;status.textContent='이미지를 준비하고 있어요.';
+ let url;
+ try{
+  url=URL.createObjectURL(file);const img=new Image();
+  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url});
+  if(!img.naturalWidth||!img.naturalHeight||img.naturalWidth*img.naturalHeight>40000000)throw new Error('dimensions');
+  const scale=Math.min(1,512/Math.max(img.naturalWidth,img.naturalHeight)),canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+  const ctx=canvas.getContext('2d');if(!ctx)throw new Error('canvas');ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  const data=canvas.toDataURL('image/webp',0.9);
+  if(session!==brandImageSession||!status.isConnected)return;
+  brandImageDraft=data;$('#brand-preview').src=data;status.textContent='미리보기를 확인하고 저장을 눌러 주세요.';
+ }catch{
+  if(session===brandImageSession&&status.isConnected)status.textContent='이미지를 읽을 수 없습니다. 다른 이미지 또는 더 작은 이미지를 선택해 주세요.';
+ }finally{
+  if(url)URL.revokeObjectURL(url);
+  if(session===brandImageSession&&status.isConnected){brandImageBusy=false;input.disabled=false;$('#brand-image-save').disabled=false;$('#brand-image-reset').disabled=false;input.value=''}
+ }
+}
+function saveBrandImage(){
+ if(brandImageBusy)return;
+ const previous=state.brandImage;
+ if(brandImageDraft)state.brandImage=brandImageDraft;else delete state.brandImage;
+ try{persist()}catch{if(previous===undefined)delete state.brandImage;else state.brandImage=previous;toast('저장 공간이 부족해 변경하지 못했어요.');return}
+ applyBrandImage();closeModal();render();toast('대표 이미지를 저장했어요.');
+}
+applyBrandImage();
+
 render();
 </script></html>
